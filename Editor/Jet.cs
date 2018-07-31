@@ -6,7 +6,7 @@ using UnityEngine;
 namespace UnityEditor.VFX.Block
 {
     [VFXInfo(category = "Force")]
-    class FLineAttractor : VFXBlock
+    class FJet : VFXBlock
     {
         public enum ForceMode
         {
@@ -14,23 +14,10 @@ namespace UnityEditor.VFX.Block
             Relative
         }
 
-        public enum FalloffMode
-        {
-            None,
-            LinearDistance,
-            QuadraticDistance,
-            InverseLinear,
-            InverseQuadratic
-        }
-
-
         [VFXSetting]
         public ForceMode Mode = ForceMode.Absolute;
 
-        [VFXSetting]
-        public FalloffMode FalloffType = FalloffMode.None;
-
-        public override string name { get { return "LineAttractor"; } }
+        public override string name { get { return "Jet"; } }
         public override VFXContextType compatibleContexts { get { return VFXContextType.kUpdate; } }
         public override VFXDataType compatibleData { get { return VFXDataType.kParticle; } }
 
@@ -57,14 +44,17 @@ namespace UnityEditor.VFX.Block
 
         public class InputProperties
         {
-            [Tooltip("Strength of the attracting force")]
+            [Tooltip("Defines the sharpness / shape of the jet")]
+            public float Shape = 3.0f;
+
+            [Tooltip("Strength of the jet force")]
             public float Strength = 1.0f;
 
-            [Tooltip("Center point of the line")]
+            [Tooltip("Origin of the Jet")]
             public Vector3 Center = new Vector3(0.0f, 0.0f, 0.0f);
 
-            [Tooltip("Vector defining the line direction")]
-            public Vector3 LineDirection = new Vector3(0.0f, 0.0f, 0.0f);
+            [Tooltip("Direction of the Jet")]
+            public Vector3 LineDirection = new Vector3(1.0f, 0.0f, 0.0f);
         }
 
         public override string source
@@ -72,31 +62,10 @@ namespace UnityEditor.VFX.Block
             get {
                 string forceVector = "0.0";
 
-                string preamble = @"float3 v = (dot((position - Center), LineDirection) / length(LineDirection) * LineDirection) - position;
-float d = length(v);
-
+                string preamble = @"float pDotL = max(dot(normalize(position - Center), LineDirection), 0.0);
 ";
 
-                forceVector = "(Strength * normalize(v))";
-
-
-                switch(FalloffType)
-                {
-                    case FalloffMode.None:
-                        break;
-                    case FalloffMode.LinearDistance:
-                        forceVector = "((Strength / d) * normalize(v))";
-                        break;
-                    case FalloffMode.QuadraticDistance:
-                        forceVector = "((Strength / (d * d)) * normalize(v))";
-                        break;
-                    case FalloffMode.InverseLinear:
-                        forceVector = "((Strength * d) * normalize(v))";
-                        break;
-                    case FalloffMode.InverseQuadratic:
-                        forceVector = "((Strength * d * d) * normalize(v))";
-                        break;
-                }
+                forceVector = "pow(pDotL, Shape) * Strength * LineDirection";
 
                 switch (Mode)
                 {
